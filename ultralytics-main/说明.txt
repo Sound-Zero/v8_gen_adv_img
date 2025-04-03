@@ -1,0 +1,10 @@
+my-detect.py用于训练、验证、预测模型。
+my-workflow.py用于批量生成噪声图片、使用best模型批量验证的噪声图片。
+hello-torch.py用于检测pytorch环境。
+
+项目修改部分：
+主要修改部分位于main//ultralytics//engine//trainer.py内第393、459、564行自定义部分
+
+注意：
+使用my-detect.py进行训练时，需要注释掉trainer.py中自定义部分，否则会占用大量显存。
+使用my-workflow.py用于批量生成噪声图片时，需要保证trainer.py自定义部分不被注释。

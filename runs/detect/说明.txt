@@ -1,0 +1,2 @@
+001内存放best模型，将在my-workflow.py中参与噪声图片的生成，
+或者用于my-detect.py中用于验证
