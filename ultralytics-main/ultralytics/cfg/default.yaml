@@ -1,0 +1,128 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Global configuration YAML with settings and hyperparameters for YOLO training, validation, prediction and export
+# For documentation see https://docs.ultralytics.com/usage/cfg/
+
+task: detect # (str) YOLO task, i.e. detect, segment, classify, pose, obb
+mode: train # (str) YOLO mode, i.e. train, val, predict, export, track, benchmark
+
+# 训练设置 -------------------------------------------------------------------------------------------------------
+model: # (str, 可选) 模型文件路径，例如 yolov8n.pt, yolov8n.yaml
+data: # (str, 可选) 数据文件路径，例如 coco8.yaml
+epochs: 100 # (int) 训练的epoch数量
+time: # (float, 可选) 训练的小时数，如果提供则覆盖epochs
+patience: 100 # (int) 等待无显著改进的epoch数，用于提前停止训练
+batch: 16 # (int) 每批次的图像数量（-1表示自动批次）
+imgsz: 640 # (int | list) 输入图像的尺寸，训练和验证模式为int，预测和导出模式为list[h,w]
+save: True # (bool) 保存训练检查点和预测结果
+save_period: -1 # (int) 每x个epoch保存检查点（如果<1则禁用）
+cache: False # (bool) True/ram, disk 或 False。使用缓存进行数据加载
+device: # (int | str | list, 可选) 运行设备，例如 cuda device=0 或 device=0,1,2,3 或 device=cpu
+workers: 8 # (int) 数据加载的工作线程数（如果是DDP则为每个RANK）
+project: # (str, 可选) 项目名称
+name: # (str, 可选) 实验名称，结果保存到'project/name'目录
+exist_ok: False # (bool) 是否覆盖现有实验
+pretrained: True # (bool | str) 是否使用预训练模型（bool）或加载权重的模型（str）
+optimizer: auto # (str) 使用的优化器，选项=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
+verbose: True # (bool) 是否打印详细输出
+seed: 0 # (int) 随机种子，用于可重复性
+deterministic: True # (bool) 是否启用确定性模式
+single_cls: False # (bool) 将多类数据作为单类训练
+rect: False # (bool) 如果mode='train'则为矩形训练，如果mode='val'则为矩形验证
+cos_lr: False # (bool) 使用余弦学习率调度器
+close_mosaic: 10 # (int) 在最后几个epoch禁用mosaic增强（0表示禁用）
+resume: False # (bool) 从最后一个检查点恢复训练
+amp: True # (bool) 自动混合精度（AMP）训练，选项=[True, False]，True运行AMP检查
+fraction: 1.0 # (float) 训练数据集的分数（默认1.0，表示训练集中的所有图像）
+profile: False # (bool) 在训练期间分析ONNX和TensorRT速度以用于日志记录
+freeze: None # (int | list, 可选) 冻结前n层，或在训练期间冻结层索引列表
+multi_scale: False # (bool) 是否在训练期间使用多尺度
+# 分割
+overlap_mask: True # (bool) 在训练期间将对象掩码合并为单个图像掩码（仅用于分割训练）
+mask_ratio: 4 # (int) 掩码下采样比率（仅用于分割训练）
+# 分类
+dropout: 0.0 # (float) 使用dropout正则化（仅用于分类训练）
+
+# Val/Test settings ----------------------------------------------------------------------------------------------------
+val: True # (bool) validate/test during training
+split: val # (str) dataset split to use for validation, i.e. 'val', 'test' or 'train'
+save_json: False # (bool) save results to JSON file
+save_hybrid: False # (bool) save hybrid version of labels (labels + additional predictions)
+conf: # (float, optional) object confidence threshold for detection (default 0.25 predict, 0.001 val)
+iou: 0.7 # (float) intersection over union (IoU) threshold for NMS
+max_det: 300 # (int) maximum number of detections per image
+half: False # (bool) use half precision (FP16)
+dnn: False # (bool) use OpenCV DNN for ONNX inference
+plots: True # (bool) save plots and images during train/val
+
+# Predict settings -----------------------------------------------------------------------------------------------------
+source: # (str, optional) source directory for images or videos
+vid_stride: 1 # (int) video frame-rate stride
+stream_buffer: False # (bool) buffer all streaming frames (True) or return the most recent frame (False)
+visualize: False # (bool) visualize model features
+augment: False # (bool) apply image augmentation to prediction sources
+agnostic_nms: False # (bool) class-agnostic NMS
+classes: # (int | list[int], optional) filter results by class, i.e. classes=0, or classes=[0,2,3]
+retina_masks: False # (bool) use high-resolution segmentation masks
+embed: # (list[int], optional) return feature vectors/embeddings from given layers
+
+# Visualize settings ---------------------------------------------------------------------------------------------------
+show: False # (bool) show predicted images and videos if environment allows
+save_frames: False # (bool) save predicted individual video frames
+save_txt: False # (bool) save results as .txt file
+save_conf: False # (bool) save results with confidence scores
+save_crop: False # (bool) save cropped images with results
+show_labels: True # (bool) show prediction labels, i.e. 'person'
+show_conf: True # (bool) show prediction confidence, i.e. '0.99'
+show_boxes: True # (bool) show prediction boxes
+line_width: # (int, optional) line width of the bounding boxes. Scaled to image size if None.
+
+# Export settings ------------------------------------------------------------------------------------------------------
+format: torchscript # (str) format to export to, choices at https://docs.ultralytics.com/modes/export/#export-formats
+keras: False # (bool) use Kera=s
+optimize: False # (bool) TorchScript: optimize for mobile
+int8: False # (bool) CoreML/TF INT8 quantization
+dynamic: False # (bool) ONNX/TF/TensorRT: dynamic axes
+simplify: True # (bool) ONNX: simplify model using `onnxslim`
+opset: # (int, optional) ONNX: opset version
+workspace: None # (float, optional) TensorRT: workspace size (GiB), `None` will let TensorRT auto-allocate memory
+nms: False # (bool) CoreML: add NMS
+
+# Hyperparameters ------------------------------------------------------------------------------------------------------
+lr0: 0.01 # (float) initial learning rate (i.e. SGD=1E-2, Adam=1E-3)
+lrf: 0.01 # (float) final learning rate (lr0 * lrf)
+momentum: 0.937 # (float) SGD momentum/Adam beta1
+weight_decay: 0.0005 # (float) optimizer weight decay 5e-4
+warmup_epochs: 3.0 # (float) warmup epochs (fractions ok)
+warmup_momentum: 0.8 # (float) warmup initial momentum
+warmup_bias_lr: 0.1 # (float) warmup initial bias lr
+box: 7.5 # (float) box loss gain
+cls: 0.5 # (float) cls loss gain (scale with pixels)
+dfl: 1.5 # (float) dfl loss gain
+pose: 12.0 # (float) pose loss gain
+kobj: 1.0 # (float) keypoint obj loss gain
+nbs: 64 # (int) nominal batch size
+hsv_h: 0.015 # (float) image HSV-Hue augmentation (fraction)
+hsv_s: 0.7 # (float) image HSV-Saturation augmentation (fraction)
+hsv_v: 0.4 # (float) image HSV-Value augmentation (fraction)
+degrees: 0.0 # (float) image rotation (+/- deg)
+translate: 0.1 # (float) image translation (+/- fraction)
+scale: 0.5 # (float) image scale (+/- gain)
+shear: 0.0 # (float) image shear (+/- deg)
+perspective: 0.0 # (float) image perspective (+/- fraction), range 0-0.001
+flipud: 0.0 # (float) image flip up-down (probability)
+fliplr: 0.5 # (float) image flip left-right (probability)
+bgr: 0.0 # (float) image channel BGR (probability)
+mosaic: 1.0 # (float) image mosaic (probability)
+mixup: 0.0 # (float) image mixup (probability)
+copy_paste: 0.0 # (float) segment copy-paste (probability)
+copy_paste_mode: "flip" # (str) the method to do copy_paste augmentation (flip, mixup)
+auto_augment: randaugment # (str) auto augmentation policy for classification (randaugment, autoaugment, augmix)
+erasing: 0.4 # (float) probability of random erasing during classification training (0-0.9), 0 means no erasing, must be less than 1.0.
+crop_fraction: 1.0 # (float) image crop fraction for classification (0.1-1), 1.0 means no crop, must be greater than 0.
+
+# Custom config.yaml ---------------------------------------------------------------------------------------------------
+cfg: # (str, optional) for overriding defaults.yaml
+
+# Tracker settings ------------------------------------------------------------------------------------------------------
+tracker: botsort.yaml # (str) tracker type, choices=[botsort.yaml, bytetrack.yaml]

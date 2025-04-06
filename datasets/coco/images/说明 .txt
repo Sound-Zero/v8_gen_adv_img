@@ -1,0 +1,5 @@
+120img用于存放120张图片，在my-workflow.py中调用此文件夹内图片，移动到val2017内生成噪声图。
+
+trained_img用于存放在my-workflow.py中生成过噪声图的图片。
+
+val2017用于在my-detect.py中使用yolo模型进行训练、预测、验证的默认路径，在my-val.yaml配置文件中被声明。
