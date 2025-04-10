@@ -1,4 +1,4 @@
-from my_detect import work_once,val_once
+from my_yolo import work_once,val_once
 import shutil
 import os
 import copy
