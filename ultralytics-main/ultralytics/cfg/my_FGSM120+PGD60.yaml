@@ -1,6 +1,6 @@
-path: D:\MyPytonProject\pythonProject\YOLOv8\datasets\FGSM120+PGD60  # dataset root dir
-train: images
-val: images
+path: D:\MyPytonProject\pythonProject\YOLOv8\datasets\FGSM120+PGD60\Reshaped  # dataset root dir
+train: D:\MyPytonProject\pythonProject\YOLOv8\datasets\FGSM120+PGD60\Reshaped\train  # train images (relative to 'path')
+val: D:\MyPytonProject\pythonProject\YOLOv8\datasets\FGSM120+PGD60\Reshaped\val
 test:
 # Classes
 names:

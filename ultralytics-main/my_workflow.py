@@ -1,50 +1,51 @@
 from my_yolo import work_once,val_once
 import shutil
 import os
-import copy
 import pynvml
 import time
+import cv2
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 
-all_img_path="./datasets/coco/images/120img"
-running_path="./datasets/coco/images/val2017"
-runned_img_path="./datasets/coco/images/trained_img"
-img_batch=12
-
-adv_img_path="./FGSM_adv_img"
+all_img_path="./datasets/不重要数据集/80img/images"      #原始图片存放位置
+running_path="./datasets/coco/images/val2017"           #模型工作目录
+runned_img_path="./datasets/coco/images/trained_img"    #被使用过的原始图片存放位置
 
 
-def generate_adv_img_workflow():
+adv_img_path="./adv_images"#默认噪声图存储位置，请从trainer.py内同步修改，用于噪声图reshape和原图一致
+default_model_path='./runs/detect/001/train138_best.pt'
+
+def generate_adv_img_workflow(img_batch=12):
+
+
+    print("初始化文件内容")
+    if (not os.path.exists(running_path))or (not os.path.exists(runned_img_path)) or (not os.path.exists(all_img_path)):
+        print("文件夹不存在，请重试")
+    else:
+        for filename in os.listdir(running_path):
+            souorce_path=os.path.join(running_path,filename)
+
+            target_path=os.path.join(all_img_path,filename)
+            shutil.move(souorce_path,target_path)
+
+        for filename in os.listdir(runned_img_path):
+            souorce_path=os.path.join(runned_img_path,filename)
+
+            target_path=os.path.join(all_img_path,filename)
+            shutil.move(souorce_path,target_path)
+        print("初始化完成")
+
     #1.把120img文件夹内的图片，从头抽取img_batch张图片，剪切粘贴放到running_path文件夹内
     img_name_list=os.listdir(all_img_path)#获取所有图片名称
     img_name_list=[f for f in img_name_list if f.endswith('.jpg')]
-
     batch_num=len(img_name_list)//img_batch
+    if len(img_name_list)%img_batch  !=0:
+        batch_num+=1
 
     for i in range(batch_num):
         #等待GPU至少空出3000MB的显存
         wait_for_gpu_memory(threshold=3000, gpu_id=0, check_interval=10) #等待GPU内存释放
-
-        if i==0: 
-            print("初始化文件内容")
-            if (not os.path.exists(running_path))or (not os.path.exists(runned_img_path)) or (not os.path.exists(all_img_path)):
-                print("文件夹不存在，请重试")
-                break
-            else:
-                for filename in os.listdir(running_path):
-                    souorce_path=os.path.join(running_path,filename)
-
-                    target_path=os.path.join(all_img_path,filename)
-                    shutil.move(souorce_path,target_path)
-
-                for filename in os.listdir(runned_img_path):
-                    souorce_path=os.path.join(runned_img_path,filename)
-
-                    target_path=os.path.join(all_img_path,filename)
-                    shutil.move(souorce_path,target_path)
-                print("初始化完成")
 
 
         ####################################################################
@@ -73,7 +74,7 @@ def generate_adv_img_workflow():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
-        work_once(batch=img_batch)#高占用显存，需要等待GPU释放后再运行
+        work_once(batch=img_batch,model_path=default_model_path)#高占用显存，需要等待GPU释放后再运行
 
         # 清理缓存
         if torch.cuda.is_available():
@@ -87,8 +88,90 @@ def generate_adv_img_workflow():
         for img_name in runned_img_list:
             shutil.move(os.path.join(running_path,img_name),os.path.join(runned_img_path,img_name))
         print("移除载入完成")
+    remove_and_reshape(train_num=batch_num,eps_file='eps_0.25')#eps_0.25为默认噪声图文件名，请根据trainer.py实际情况修改
+
+def remove_and_reshape(train_num=0,eps_file=''):
+    ''' 
+    从新到旧删除多余train文件，修改噪声图shape,与原图保持一致
+    eps_file为默认噪声图文件名，请根据trainer.py实际情况修改
+    噪声图路径=adv_img_path+eps_file
+    '''
 
 
+    global adv_img_path,all_img_path
+    adv_file=os.path.join(adv_img_path,eps_file)
+
+    print("初始化文件内容")
+    if (not os.path.exists(running_path))or (not os.path.exists(runned_img_path)) or (not os.path.exists(all_img_path)):
+        print("文件夹不存在，请重试")
+    else:
+        for filename in os.listdir(running_path):
+            souorce_path=os.path.join(running_path,filename)
+
+            target_path=os.path.join(all_img_path,filename)
+            shutil.move(souorce_path,target_path)
+
+        for filename in os.listdir(runned_img_path):
+            souorce_path=os.path.join(runned_img_path,filename)
+
+            target_path=os.path.join(all_img_path,filename)
+            shutil.move(souorce_path,target_path)
+        print("初始化完成")
+
+    if train_num:
+        train_file_path='./runs/detect'#yolo默认的保存位置
+        train_file_list=os.listdir(train_file_path)
+        #确保是文件夹
+        train_file_list=[f for f in train_file_list if f.startswith('train') and os.path.isdir(os.path.join(train_file_path,f))]
+        #按照时间顺序从新到旧排序
+        train_file_list.sort(key=lambda x: os.path.getmtime(os.path.join(train_file_path,x)))
+        #删除多余的train文件
+        if train_num>len(train_file_list):
+            print("train_num大于train文件夹数量，请重试")
+            return
+        else:
+            train_file_list=train_file_list[0:train_num]
+            print("删除多余train文件夹",train_file_list)
+            
+            count=0
+            try:
+                for i in range(train_num):
+                    shutil.rmtree(os.path.join(train_file_path,train_file_list[i]))
+                    count+=1
+            except:
+                print("删除train文件夹失败，请重试")
+                return
+            print("删除多余train文件夹成功",count)
+    if os.path.exists(adv_img_path)  and os.path.exists(all_img_path):
+        all_img_name_list=os.listdir(all_img_path)
+        all_img_name_list=[f[:-4] for f in all_img_name_list if f.endswith('.jpg')]
+
+        target_img_name_list=os.listdir(os.path.join(adv_file))
+        target_img_name_list=[f[:-4] for f in target_img_name_list if f.endswith('.jpg')]
+
+        bool_check=True
+        for img_name in target_img_name_list:
+            if img_name not in all_img_name_list:
+                print('噪声图缺少对应原图:',img_name)
+        if bool_check:
+            count=0
+            for img_name in target_img_name_list:
+                origin_img_path=os.path.join(all_img_path,img_name+'.jpg')
+                origin_img=cv2.imread(origin_img_path)
+                
+                temp_adv=os.path.join(adv_file,img_name+'.jpg')
+                adv_img=cv2.imread(temp_adv)
+
+                adv_height , adv_width =adv_img.shape[:2]
+                origin_height,origin_width=origin_img.shape[:2]
+
+                start_y = (adv_height - origin_height) // 2
+                start_x = (adv_width - origin_width) // 2
+                cropped_fgsm_img = adv_img[start_y:start_y + origin_height, start_x:start_x + origin_width]
+
+                cv2.imwrite(os.path.join(adv_file,img_name+'.jpg'),cropped_fgsm_img)
+                count+=1
+            print("修改噪声图shape成功，共修改",count,"张图片")
 
 
 def get_gpu_mem_info(gpu_id=0):
@@ -128,12 +211,29 @@ def wait_for_gpu_memory(threshold=3000, gpu_id=0, check_interval=10):
 
 
 def val_adv_img_workflow():
-    # val_once(batch=img_batch)
+
     """
-    读取adv_img_path路径下的子目录，每个子目录下有若干图片，一一验证所有子目录内的图片
+    要求：确保running_path文件夹存在且没有图片
+    功能：读取adv_img_path路径下的子目录，每个子目录下有若干图片，一一验证所有子目录内的图片
+
+    model={
+        "default":"./yolov8s.pt",
+
+        'group1':"./runs/detect/001/train138_best.pt",                #第一组
+        
+        'group2':"./runs/detect/001/FGSM120_train138_best.pt",        #第二组
+
+        'group3':"./runs/detect/001/PGD60+FGSM120_train188_best.pt",  #第三组
+
+        'temp':"./runs/detect/001/best.pt",   #临时模型
+
+        'round_train':'./runs/detect/001/Round_training_best.pt',   #循环训练三轮
+        'fusion_model':'./runs/detect/001/fusion_model.pt',         #融合模型
+        'fusion_best138':"./runs/detect/001/fusion_best138.pt",     #融合后训练138Epoch
+    }
+
     """
 
-    #确保running_path文件夹存在且没有图片
 
     
     if not os.path.exists(running_path) :
@@ -158,7 +258,7 @@ def val_adv_img_workflow():
                 shutil.move(os.path.join(img_file_path,img_name),os.path.join(running_path,img_name))
             print("载入图片完成")
 
-            val_once()#验证
+            val_once(model='group1',data_yaml='default')#验证
 
             img_name_list=os.listdir(running_path)
             for img_name in img_name_list:
@@ -171,7 +271,10 @@ def val_adv_img_workflow():
 
 
 def name_fix():
-    #修正adv_images文件夹内图片名称
+    ''' 
+    功能：修正adv_images文件夹内图片名称
+    '''
+    
     files=os.listdir(adv_img_path)
     total_count=0
     for f in files:
@@ -189,51 +292,15 @@ def name_fix():
     print("总修正数量：",total_count)
 
 
-def show_adv_img(save_img=False):
-    file_name_list = os.listdir(adv_img_path)
-    img_list = []
-    for file_name in file_name_list[:9]:  # 读取9张图片eps:0.05~0.45
-        img_file_path = os.path.join(adv_img_path, file_name)
-        img_name = os.listdir(img_file_path)[0]
-        img = Image.open(os.path.join(img_file_path, img_name))
-        img = img.resize((600, 600))  # 统一调整图片大小为100x100
-        np_img = np.array(img)
-        img_list.append(np_img)
 
-    plt.figure(figsize=(10, 10))  # 设置画布大小
-    plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
-    for i in range(len(img_list)):
-        plt.subplot(3, 3, i + 1)
-        plt.imshow(img_list[i])
-        plt.axis('off')  # 不显示坐标轴
-    if save_img:
-        plt.savefig('./adersarial_image.png', bbox_inches='tight', pad_inches=0)
-    plt.show()  # 显示图片
 
-def show_train_img(save_img=False):
-    img_name_list=os.listdir(all_img_path)[:9]
-    img_list=[]
-    for img_name in img_name_list:
-        img_path=os.path.join(all_img_path,img_name)
-        img=Image.open(img_path)
-        np_img=np.array(img)
-        img_list.append(np_img)
-
-    plt.figure(figsize=(10, 10))  # 设置画布大小
-    plt.subplots_adjust(wspace=0, hspace=0)  # 调整子图间距
-    for i in range(len(img_list)):
-        plt.subplot(3, 3, i + 1)
-        plt.imshow(img_list[i])
-        plt.axis('off')  # 不显示坐标轴
-    if save_img:
-        plt.savefig('./train_image.png', bbox_inches='tight', pad_inches=0)
-    plt.show()  # 显示图片
 
 
 
 if __name__=="__main__":
+    pass
     #name_fix()
     #generate_adv_img_workflow()
-    val_adv_img_workflow()
-    #show_adv_img(save_img=True)
-    #show_train_img(save_img=True)
+    #val_adv_img_workflow()
+ 
+    #remove_and_reshape(train_num=0,eps_file='eps_0.25')

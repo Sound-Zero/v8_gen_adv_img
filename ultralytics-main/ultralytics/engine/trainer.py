@@ -101,6 +101,8 @@ class BaseTrainer:
             overrides (dict, optional): Configuration overrides. Defaults to None.
         """
         self.args = get_cfg(cfg, overrides)
+
+
         self.check_resume(overrides)
         self.device = select_device(self.args.device, self.args.batch)
         self.validator = None
@@ -379,14 +381,14 @@ class BaseTrainer:
 
 
             
-            # ##############自定义##############################
+            ###############————————自定义————————############################################################################################################
 
-            attack_task=""      #  "fgsm"  or  "pgd"
+            attack_task=""#"fgsm"      #  "fgsm"  or  "pgd"
             if attack_task=="fgsm":
                 all_imgs = []
                 grads=[]
                 img_path=[]
-                epsilons = [  0.05,0.2,0.3,0.4]
+                epsilons = [  0.25]
                 #保存不同epsilon的对抗样本到指定绝对路径
                 save_adv_path=r"D:\\MyPytonProject\\pythonProject\\YOLOv8\\adv_images"
             elif attack_task=="pgd":
@@ -397,7 +399,7 @@ class BaseTrainer:
                 alpha=0.05  #每次扰动幅度
                 epsilon=0.25  #总体的扰动幅度绝对值
                 save_adv_path=r"D:\\MyPytonProject\\pythonProject\\YOLOv8\\adv_images"
-
+            ###################################################################################################################################
 
 
 
@@ -459,7 +461,7 @@ class BaseTrainer:
 
 
 
-                    #############################——————自定义—————#############################
+                    #############################——————自定义—————########################################################################################################################
                     # 原为计算损失
                     if attack_task=='pgd' and epoch == self.epochs-1:
 
@@ -522,7 +524,7 @@ class BaseTrainer:
                             
                             my_grad=torch.autograd.grad(outputs=self.loss, inputs=batch["img"],grad_outputs=torch.ones_like(self.loss),create_graph=True)#,retain_graph=True
                             grads.append(my_grad)
-                    ###########################################################
+                    ###################################################################################################################################################################
 
 
 
@@ -625,7 +627,7 @@ class BaseTrainer:
                 self.stop = broadcast_list[0]
             if self.stop:  # 满足停止条件则跳出循环
 
-                ######################——————自定义——————#######################
+                ######################——————自定义——————#####################################################################################################
                 if attack_task=='fgsm':
     
                     print("保存结果图")
@@ -682,7 +684,7 @@ class BaseTrainer:
                                 plt.imsave(os.path.join(target_path,f"{img_name}"),adv_image)
                     print('保存')
 
-                ############################################################################################
+                #############################################################################################################################################################
                 break
             epoch += 1  # 更新epoch计数
 
@@ -927,6 +929,8 @@ class BaseTrainer:
 
                 # Check that resume data YAML exists, otherwise strip to force re-download of dataset
                 ckpt_args = attempt_load_weights(last).args
+
+
                 if not Path(ckpt_args["data"]).exists():
                     ckpt_args["data"] = self.args.data
 
@@ -954,6 +958,8 @@ class BaseTrainer:
         if ckpt is None or not self.resume:
             return
         best_fitness = 0.0
+
+
         start_epoch = ckpt.get("epoch", -1) + 1
         if ckpt.get("optimizer", None) is not None:
             self.optimizer.load_state_dict(ckpt["optimizer"])  # optimizer

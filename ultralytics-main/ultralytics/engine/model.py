@@ -1088,7 +1088,6 @@ class Model(torch.nn.Module):
             args["resume"] = self.ckpt_path
 
 
-        #self.trainer 为<ultralytics.models.yolo.detect.train.DetectionTrainer object at 0x00000290BF536CD0>
         self.trainer = (trainer or self._smart_load("trainer"))(overrides=args, _callbacks=self.callbacks)
         if not args.get("resume"):  # 如果不是从检查点恢复训练
             # 手动设置模型：如果存在检查点则使用当前模型作为权重，否则使用默认配置
