@@ -383,7 +383,7 @@ class BaseTrainer:
             
             ###############————————自定义————————############################################################################################################
 
-            attack_task=""#"fgsm"      #  "fgsm"  or  "pgd"
+            attack_task=""    #  "pgd" or "fgsm"
             if attack_task=="fgsm":
                 all_imgs = []
                 grads=[]
@@ -473,24 +473,19 @@ class BaseTrainer:
                         img_path.append(batch["im_file"])#list类型,每个元素为str类型,表示绝对路径
                         adv_img=orig_img.clone()
                         for iter_idx in range(iter_num):
-                            min_val,max_val=torch.min(adv_img).item(),torch.max(adv_img).item()
-
-
-                            
+                            #min_val,max_val=torch.min(adv_img).item(),torch.max(adv_img).item()
                             self.loss, self.loss_items = self.model(batch)  # 计算损失
                             my_grad=torch.autograd.grad(outputs=self.loss, inputs=batch["img"],grad_outputs=torch.ones_like(self.loss),create_graph=True)
+                            self.scaler.scale(self.loss).backward(retain_graph=True)
                             
-     
                             adv_img=adv_img +alpha * my_grad[0].sign()
                             # 限制扰动范围
                             delta = torch.clamp(adv_img - orig_img, min=-epsilon, max=epsilon)
-
                             # 进行下一轮的对抗样本生成
                             adv_img = orig_img + delta
                             adv_img = torch.clamp(adv_img, min=0, max=1).detach()
                             batch["img"]=adv_img
                             batch["img"].requires_grad=True
-
 
                             self.optimizer.zero_grad()  # 清空梯度
 
